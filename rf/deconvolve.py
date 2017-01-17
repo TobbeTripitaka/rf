@@ -27,7 +27,7 @@ def __find_nearest(array, value):
 
 
 @_add_processing_info
-def deconvolve(stream, method='time',
+def deconvolve(stream, method='time', func=None,
                source_components='LZ', response_components=None,
                winsrc='P', **kwargs):
     """
@@ -43,6 +43,7 @@ def deconvolve(stream, method='time',
     :param method:
         'time' -> use time domain deconvolution in `deconvt()`,\n
         'freq' -> use frequency domain deconvolution in `deconvf()`
+        'func' -> user defined function (func keyword)
     :param source_components: names of components identifying the source traces,
         e.g. 'LZ' for P receiver functions and 'QR' for S receiver functions
     :param response_components: names of components identifying the response
@@ -64,7 +65,7 @@ def deconvolve(stream, method='time',
         excluded from the results, the normalization will performed against
         the first trace in results.
     """
-    if method not in ('time', 'freq'):
+    if method not in ('time', 'freq', 'func'):
         raise NotImplementedError()
     # identify source and response components
     src = [tr for tr in stream if tr.stats.channel[-1] in source_components]
@@ -114,10 +115,12 @@ def deconvolve(stream, method='time',
     if method == 'time':
         shift = int(round(tshift * sr - len(src) // 2))
         rf_data = deconvt(rsp_data, src.data, shift, length=length, **kwargs)
-    else:
+    elif method == 'freq':
         rf_data = deconvf(rsp_data, src.data, sr, tshift=tshift, length=length,
                           **kwargs)
-
+    else:
+        rf_data = func(rsp_data, src.data, sr=sr, shift=shift, tshift=tshift,
+                       length=length, **kwargs)
     for i, tr in enumerate(rsp):
         tr.data = rf_data[i].real
         assert len(tr) == length
